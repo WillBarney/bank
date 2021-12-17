@@ -14,6 +14,11 @@ namespace Bank
         public int levelOfAccess;
         public string passcode;
 
+        public Employee()
+        {
+
+        }
+
         public Employee(int employeeID,string firstName,string lastName,string position,string passcode)
         {
             this.employeeID = employeeID;
@@ -25,7 +30,18 @@ namespace Bank
 
         public void ResetPassword()
         {
-            
+            string password1;
+            string password2;
+            do{
+                Console.Write("enter new password: ");
+                password1 = Console.ReadLine();
+
+                Console.Write("enter new password again: ");
+                password2 = Console.ReadLine();
+            }
+            while(password1 != password2);
+
+            this.passcode = password1;
         }
     }
 }

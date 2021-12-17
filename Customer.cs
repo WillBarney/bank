@@ -12,8 +12,13 @@ namespace Bank
         public string ssn;
         public string address;
         public List<Account> accounts = new List<Account>();
-        private string passcode;
- 
+        public string passcode;
+        
+        public Customer()
+        {
+            
+        }
+
         public Customer(int customerID,string firstName,string lastName,string ssn,string address,string passcode)
         {
             this.customerID = customerID;
@@ -24,19 +29,37 @@ namespace Bank
             this.passcode = passcode;
         }
 
-        public string PrintAllAccounts()
+        public void PrintAllAccounts()
         {
-            string accountsSummary = "";
-            foreach(var account in accounts)
+            if(accounts.Count() < 1)
             {
-                accountsSummary += $"\taccount#: {account.accountNumber}\taccount type: {account.accountType}\tapy: {account.apy}\tbalance: {account.balance:C}";
+                Console.WriteLine("this customer has no accounts");
             }
-            return accountsSummary;
+            else
+            {
+                string accountsSummary = "";
+                foreach(var account in accounts)
+                {
+                    accountsSummary += $"\taccount#: {account.accountNumber}\taccount type: {account.accountType}\tapy: {account.apy}\tbalance: {account.balance:C}\n";
+                }
+                Console.WriteLine(accountsSummary);
+            }
         }
 
         public void ResetPassword()
         {
-            
+            string password1;
+            string password2;
+            do{
+                Console.Write("enter new password: ");
+                password1 = Console.ReadLine();
+
+                Console.Write("enter new password again: ");
+                password2 = Console.ReadLine();
+            }
+            while(password1 != password2);
+
+            this.passcode = password1;
         }
         
         public override string ToString()

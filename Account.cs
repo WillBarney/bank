@@ -8,11 +8,11 @@ namespace Bank
         public string accountType;
         public decimal apy;
         public decimal balance;
-
+        private Transaction[] transactions;
 
         public Account()
         {
-            accountType = "Checking";
+            accountType = "checking";
             apy = DetermineAPY(accountType);
             balance = 0.00m;
         }
@@ -34,6 +34,9 @@ namespace Bank
                     break;
                 case "savings":
                     apy = 0.0005m;
+                    break;
+                case "money market":
+                    apy = 0.001m;
                     break;
                 default:
                     apy = 0.0m;

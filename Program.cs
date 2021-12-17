@@ -24,7 +24,10 @@ namespace Bank
         private static Random rnd = new Random();
 
         //expressions
-        private static List<Regex> regexes = new List<Regex>
+        private static Regex customerRegex = new Regex("^(customer)$");
+        private static Regex adminRegex = new Regex("^(admin)$");
+        private static Regex quitRegex = new Regex("^(quit)$");
+        private static List<Regex> adminRegexes = new List<Regex>
         {
             new Regex("^(create)[ ](customer)$"), //index 0
             new Regex("^(create)[ ](account)$"), //index 1
@@ -33,28 +36,263 @@ namespace Bank
             new Regex("^(quit)$"), //index 4
             new Regex("^(show)[ ](customers)$"), //index 5
             new Regex("^(show)[ ](accounts)$"), //index 6
-            new Regex("^(test)$"), //index 7
-            new Regex("^(simulate)[ ][0-9]{6}[ ][0-9]{8}[ ][0-9]{1,2}$") //index 8 - simulate word, then a 6 digit customerID, then a 8 digit accountID, then a number of years to calculate for
+            new Regex("^(simulate)[ ][0-9]{6}[ ][0-9]{8}[ ][0-9]{1,2}$"), //index 7 - simulate word, then a 6 digit customerID, then a 8 digit accountID, then a number of years to calculate for
+            new Regex("^[/](functions)$")//index 8
+        };
+        private static List<Regex> customerRegexes = new List<Regex>
+        {
+            new Regex("^(show)[ ](accounts)$"), //index 0
+            new Regex("^(create)[ ](transfer)$"),
+            new Regex("^(quit)$") //index 1
         };
 
-        // login and loop bools
+        //loop bools
         private static bool toContinue = true;
+        private static bool toContinueUser = true;
+        private static bool toContinueAdmin = true;
+
+        //login bools
         private static bool adminLoggedIn = false;
+        private static bool customerLoggedIn = false;
+
+        //current customer and admin logged-in variables
+        private static Customer currentCustomerLoggedIn = new Customer();
+        private static Employee currentEmployeeLoggedIn = new Employee();
 
         public static void Main(string[] args)
         {
-            //AdminLogIn();
-            MainMenu();
-        }
-        
-        public static void MainMenu()
-        {
             while(toContinue)
             {
-                Console.Write("Enter a function: ");
+                Console.Write("customer/admin> ");
+                string user = Console.ReadLine();
+
+                if(customerRegex.IsMatch(user))
+                {
+                    CustomerLogin();
+                    CustomerMenu();
+                }
+                else if(adminRegex.IsMatch(user))
+                {
+                    AdminLogIn();
+                    AdminMenu();
+                }
+                else if(quitRegex.IsMatch(user))
+                {
+                    toContinue = false;
+                }
+            }
+        }
+
+        //USER METHODS
+        //CustomerMenu: 
+        private static void CustomerMenu()
+        {
+            toContinueUser = true;
+            while(toContinueUser)
+            {
+                Console.Write("customer> ");
+                string userFunction = Console.ReadLine();
+
+                if(customerRegexes[0].IsMatch(userFunction))
+                {
+                    currentCustomerLoggedIn.PrintAllAccounts();
+                }
+                else if(customerRegexes[1].IsMatch(userFunction))
+                {
+                    Transfer();
+                }
+                else if(customerRegexes[2].IsMatch(userFunction))
+                {
+                    toContinueUser = false;
+                }
+            }
+        }
+
+        //CustomerLogin:
+        private static void CustomerLogin()
+        {
+            //initialize number of tries to 0
+            int incorrectTries = 0;
+
+            //ask for userid and password
+            Console.Write("userid: ");
+            int userID = int.Parse(Console.ReadLine());
+            Console.Write("password: ");
+            string password = Console.ReadLine();
+
+            //find a customer with a userid that matches
+            var customerBasedOffID = customers.Where(x => x.customerID == userID).ToList();
+            //loop till a valid userid is given or till number of tries reaches 5
+            while(customerBasedOffID.Count() < 1 && incorrectTries < 5)
+            {
+                Console.Write("user id does not exist. enter another user id: ");
+                userID = int.Parse(Console.ReadLine());
+
+                customerBasedOffID = customers.Where(x => x.customerID == userID).ToList();
+                incorrectTries++;
+            }
+            //reset tries for password
+            incorrectTries = 0;
+            //initialize password to match userid passcode
+            string correctPassword = customerBasedOffID.First().passcode;
+            //loop till password is correct or till number of tries reacher 5
+            while(password != correctPassword && incorrectTries < 5)
+            {
+                Console.Write("password is incorrect. enter another password: ");
+                password = Console.ReadLine();
+                incorrectTries++;
+            }
+
+            //if tries is less than five then the login info was correct, 
+            //if tries is 5 or greater than the main menu loop will stop and the user is notified of failure
+            if(incorrectTries < 5)
+            {
+                customerLoggedIn = true;
+                currentCustomerLoggedIn = customerBasedOffID.First();
+                Console.WriteLine($"Customer #{customerBasedOffID.First().customerID} logged in!");
+            }
+            else
+            {
+                toContinue = false;
+                Console.WriteLine("too many wrong log in attempts");
+            }
+        }
+
+        //Transfer: get from and recieve account (validated), get transfer amount(validated), perform transfer
+        private static void Transfer()
+        {
+            if(currentCustomerLoggedIn.accounts.Count <= 1)
+            {
+                Console.WriteLine("this customer does not have 2 or more accounts");
+            }
+            else
+            {
+                //establish from and recieve accounts
+                Account fromAccount;
+                Account recieveAccount;
+
+                //ask for from account id
+                Console.Write("enter from account id: ");
+                int fromAccountID = int.Parse(Console.ReadLine());
+
+                //search for from account in records
+                var accounts = currentCustomerLoggedIn.accounts.Where(x => x.accountNumber == fromAccountID).ToList();
+
+                //validate from account
+                while(accounts.Count() != 1)
+                {
+                    Console.Write("account does not exist. enter another account id: ");
+                    fromAccountID = int.Parse(Console.ReadLine());
+
+                    accounts = currentCustomerLoggedIn.accounts.Where(x => x.accountNumber == fromAccountID).ToList();
+                }
+
+                //set from account to validated account given
+                fromAccount = accounts.First();
+
+                //inform user of current from balance
+                Console.WriteLine($"from account balance: {fromAccount.balance:C}");
+
+                //ask for recieve account id
+                Console.Write("enter recieve account id: ");
+                int recieveAccountID = int.Parse(Console.ReadLine());
+
+                //search for recieve account in records
+                accounts = currentCustomerLoggedIn.accounts.Where(x => x.accountNumber == recieveAccountID).ToList();
+
+                //validate recieve account
+                while(accounts.Count() != 1)
+                {
+                    Console.Write("account does not exist. enter another account id: ");
+                    fromAccountID = int.Parse(Console.ReadLine());
+
+                    accounts = currentCustomerLoggedIn.accounts.Where(x => x.accountNumber == recieveAccountID).ToList();
+                }
+
+                //set recieve account to validated account given
+                recieveAccount = accounts.First();
+
+                //inform user of current recieve balance
+                Console.WriteLine($"recieve account balance: {recieveAccount.balance:C}");
+
+                //ask for transfer amount
+                Console.Write("enter transfer amount: ");
+                decimal transferAmount = decimal.Parse(Console.ReadLine());
+
+                //validate transfer amount to be greater than 0 and less than half the account balance
+                while(transferAmount <= 0.0m || transferAmount > fromAccount.balance*0.5m)
+                {
+                    Console.Write("the transfer amount must be greater than zero and can't be more than half the account balance. enter another amount: ");
+                    transferAmount = decimal.Parse(Console.ReadLine());
+                }
+                
+                //take transfer from account and move to other
+                fromAccount.balance -= transferAmount;
+                recieveAccount.balance += transferAmount;
+
+                Console.WriteLine($"{transferAmount:C} moved from {fromAccount.accountNumber} to {recieveAccount.accountNumber}!");
+            }
+        }
+
+        //ADMINISTRATOR METHODS
+        //AdminLogIn: asks for admin login, user id must match in order to confirm password. if incorrectTries gets to 5 the app will quit
+        private static void AdminLogIn()
+        {
+            //initialize number of tries to 0
+            int incorrectTries = 0;
+
+            //ask for userid and password
+            Console.Write("userid: ");
+            int userID = int.Parse(Console.ReadLine());
+            Console.Write("password: ");
+            string password = Console.ReadLine();
+
+            //find an account with a userid that matches
+            var employeeBasedOffID = employees.Where(x => x.employeeID == userID).ToList();
+            //loop till a valid userid is given or till number of tries reaches 5
+            while(employeeBasedOffID.Count() < 1 && incorrectTries < 5)
+            {
+                Console.Write("user id does not exist. enter another user id: ");
+                userID = int.Parse(Console.ReadLine());
+
+                employeeBasedOffID = employees.Where(x => x.employeeID == userID).ToList();
+                incorrectTries++;
+            }
+            //initialize password to match userid passcode
+            string correctPassword = employeeBasedOffID.First().passcode;
+            //loop till password is correct or till number of tries reacher 5
+            while(password != correctPassword && incorrectTries < 5)
+            {
+                Console.Write("password is incorrect. enter another password: ");
+                password = Console.ReadLine();
+                incorrectTries++;
+            }
+
+            //if tries is less than five then the login info was correct, 
+            //if tries is 5 or greater than the main menu loop will stop and the user is notified of failure
+            if(incorrectTries < 5)
+            {
+                adminLoggedIn = true;
+                currentEmployeeLoggedIn = employeeBasedOffID.First();
+                Console.WriteLine($"Admin #{employeeBasedOffID.First().employeeID} logged in!");
+            }
+            else
+            {
+                toContinue = false;
+                Console.WriteLine("too many wrong log in attempts");
+            }
+        }
+
+        //AdminMenu: 
+        public static void AdminMenu()
+        {
+            toContinueAdmin = true;
+            while(toContinueAdmin)
+            {
+                Console.Write("admin> ");
                 string function = Console.ReadLine();
 
-                if(regexes[0].IsMatch(function)) //create customer validation
+                if(adminRegexes[0].IsMatch(function)) //create customer validation
                 {
                     if(!adminLoggedIn)
                     {
@@ -71,7 +309,7 @@ namespace Bank
                         CreateCustomer();
                     }
                 }
-                else if(regexes[1].IsMatch(function)) //create account validation
+                else if(adminRegexes[1].IsMatch(function)) //create account validation
                 {
                     if(!adminLoggedIn)
                     {
@@ -89,7 +327,7 @@ namespace Bank
                         CreateAccount();
                     }    
                 }
-                else if(regexes[2].IsMatch(function)) //create deposit validation
+                else if(adminRegexes[2].IsMatch(function)) //create deposit validation
                 {
                     if(!adminLoggedIn)
                     {
@@ -106,7 +344,7 @@ namespace Bank
                         Deposit();
                     }
                 }
-                else if(regexes[3].IsMatch(function)) //create withdraw validation
+                else if(adminRegexes[3].IsMatch(function)) //create withdraw validation
                 {
                     if(!adminLoggedIn)
                     {
@@ -123,11 +361,11 @@ namespace Bank
                         Withdraw();
                     }
                 }
-                else if(regexes[4].IsMatch(function)) //quit validation
+                else if(adminRegexes[4].IsMatch(function)) //quit validation
                 {
-                    toContinue = false;
+                    toContinueAdmin = false;
                 }
-                else if(regexes[5].IsMatch(function)) //show customers validation
+                else if(adminRegexes[5].IsMatch(function)) //show customers validation
                 {
                      if(!adminLoggedIn)
                     {
@@ -144,7 +382,7 @@ namespace Bank
                         ShowCustomers();
                     }
                 }
-                else if(regexes[6].IsMatch(function)) //show accounts validation
+                else if(adminRegexes[6].IsMatch(function)) //show accounts validation
                 {
                      if(!adminLoggedIn)
                     {
@@ -161,65 +399,28 @@ namespace Bank
                         ShowAccounts();
                     }
                 }
-                else if(regexes[7].IsMatch(function)) //test validation
-                {
-                    ExpressionTest();
-                }
-                else if(regexes[8].IsMatch(function))
+                else if(adminRegexes[7].IsMatch(function)) //simulate validation
                 {
                     Simulate(function);
                 }
-
+                else if(adminRegexes[8].IsMatch(function)) //show functions validation
+                {
+                    ShowFunctions();
+                }
+                else
+                {
+                    Console.WriteLine("invalid function: enter /funcs for a list of current functions");
+                }
             }
         }
 
-        //AdminLogIn: asks for admin login, user id must match in order to confirm password. if incorrectTries gets to 5 the app will quit
-        private static void AdminLogIn()
+        //ShowFunctions: show all admin functions
+        private static void ShowFunctions()
         {
-            //initialize number of tries to 0
-            int incorrectTries = 0;
-
-            //ask for userid and password
-            Console.Write("userid: ");
-            int userID = int.Parse(Console.ReadLine());
-            Console.Write("password: ");
-            string password = Console.ReadLine();
-
-            //find an account with a userid that matches
-            var accountBasedOffID = employees.Where(x => x.employeeID == userID).ToList();
-            //loop till a valid userid is given or till number of tries reaches 5
-            while(accountBasedOffID.Count() < 1 && incorrectTries < 5)
-            {
-                Console.Write("user id does not exist. enter another user id: ");
-                userID = int.Parse(Console.ReadLine());
-
-                accountBasedOffID = employees.Where(x => x.employeeID == userID).ToList();
-                incorrectTries++;
-            }
-            //initialize password to match userid passcode
-            string correctPassword = accountBasedOffID.First().passcode;
-            //loop till password is correct or till number of tries reacher 5
-            while(password != correctPassword && incorrectTries < 5)
-            {
-                Console.Write("password is incorrect. enter another password: ");
-                password = Console.ReadLine();
-                incorrectTries++;
-            }
-
-            //if tries is less than five then the login info was correct, 
-            //if tries is 5 or greater than the main menu loop will stop and the user is notified of failure
-            if(incorrectTries < 5)
-            {
-                adminLoggedIn = true;
-                Console.WriteLine($"{accountBasedOffID.First().employeeID} logged in!");
-            }
-            else
-            {
-                toContinue = false;
-                Console.WriteLine("too many wrong log in attempts");
-            }
+            Console.WriteLine("- create customer\n- create account\n- create deposit\n- create withdraw\n- show customers\n- show accounts\n- simulate\nquit");
         }
 
+        //CreateCustomer: 
         private static void CreateCustomer()
         {
             int customerID = rnd.Next(100000,1000000);
@@ -268,6 +469,7 @@ namespace Bank
             Console.WriteLine($"Customer ID {customerID} created!");
         }
 
+        //CreateAccount: 
         private static void CreateAccount()
         {
             Console.Write("Enter customer ID: ");
@@ -434,6 +636,7 @@ namespace Bank
             }
         }
 
+        //ShowCustomers: call customer toString method for each customer in the customers list
         private static void ShowCustomers()
         {
             foreach(Customer customer in customers)
@@ -442,6 +645,7 @@ namespace Bank
             }
         }
 
+        //ShowAccounts: get the customerid, then call the showallaccounts method
         private static void ShowAccounts()
         {
             Console.Write("Enter customer ID: ");
@@ -462,42 +666,9 @@ namespace Bank
 
             Customer pickedCustomer = matchedCustomers.First();
 
-            Console.WriteLine(pickedCustomer.PrintAllAccounts());
+            pickedCustomer.PrintAllAccounts();
         }
 
-        public static void ExpressionTest()
-        {
-            bool toContinue = true;
-            Regex regex = new Regex("");
-
-            while(toContinue)
-            {
-                Console.Write("expression: ");
-                string exp = Console.ReadLine();
-
-                if(exp == "quit")
-                {
-                    toContinue = false;
-                }else
-                {
-                    regex = new Regex(exp);
-
-                    Console.Write("data: ");
-                    string data = Console.ReadLine();
-
-                    Console.WriteLine($"data to be tested:\n{data}");
-
-                    if(regex.IsMatch(data))
-                    {
-                        Console.WriteLine("match");
-                    }
-                    else
-                    {
-                        Console.WriteLine("no match");
-                    }
-                }
-            }                                                 
-        }
         //Simulate: take the function, split the string to get the cusid,accid and years, validate the customer and account, determine the compound interest and show the user
         private static void Simulate(string function)
         {
